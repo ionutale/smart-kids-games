@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<!-- PROTOTYPE. Throwaway. Three variants of Home, switchable via ?variant=, in this file because the app has no pages yet. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PROTOTYPE — Cozy home</title>
+  <style>
+    :root {
+      --ink: #3c342b;
+      --cream: #fff4e4;
+      --sky: #b9e3f7;
+      --grass: #8fbf73;
+      --wood: #c48955;
+      --star: #f0c14a;
+      --star-empty: #e4d3b0;
+      --card: #fffaf2;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      font-family: "Avenir Next", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: #1c1916;
+    }
+    button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; }
+    button:focus-visible { outline: 3px solid #2f6fed; outline-offset: 3px; }
+    #app { min-height: 100%; }
+    .stars { display: flex; gap: 4px; flex-wrap: wrap; }
+    .star {
+      width: 16px; height: 16px; border-radius: 50%;
+      background: var(--star-empty);
+      box-shadow: inset 0 -2px 0 rgba(0,0,0,.08);
+    }
+    .star.on { background: var(--star); }
+    .friend {
+      width: 100%; height: 100%;
+      display: grid; place-items: center;
+    }
+    .friend svg { width: 78%; height: 78%; }
+    .slot {
+      border-radius: 50%;
+      background: rgba(255,255,255,.55);
+      border: 3px dashed rgba(60,52,43,.35);
+      position: relative;
+    }
+    .slot.filled { border-style: solid; border-color: transparent; background: #fff; }
+    .slot.active { box-shadow: 0 0 0 4px #fff, 0 0 0 8px #f0c14a; }
+    .flag {
+      width: 64px; height: 44px; border-radius: 10px; overflow: hidden;
+      box-shadow: 0 2px 0 rgba(0,0,0,.12);
+      opacity: .55;
+    }
+    .flag.on { opacity: 1; transform: translateY(-4px); box-shadow: 0 0 0 4px #fff, 0 6px 0 rgba(0,0,0,.08); }
+    .flag .it, .flag .uk { display: flex; height: 100%; }
+    .flag .it i { flex: 1; display: block; }
+    .flag .it i:nth-child(1) { background: #009246; }
+    .flag .it i:nth-child(2) { background: #fff; }
+    .flag .it i:nth-child(3) { background: #ce2b37; }
+    .flag .uk { background: #012169; position: relative; }
+    .flag .uk::before, .flag .uk::after {
+      content: ""; position: absolute; background: #fff;
+    }
+    .flag .uk::before { left: 0; right: 0; top: 18px; height: 8px; }
+    .flag .uk::after { top: 0; bottom: 0; left: 28px; width: 8px; }
+    .bubble {
+      position: fixed; left: 50%; top: 18px; transform: translateX(-50%);
+      background: #fff; border-radius: 999px; padding: 10px 18px;
+      font-size: 22px; box-shadow: 0 8px 24px rgba(0,0,0,.15); z-index: 30;
+    }
+    .sheet, .confirm {
+      position: fixed; inset: 0; background: rgba(40,30,20,.35);
+      display: grid; place-items: center; z-index: 20; padding: 24px;
+    }
+    .sheet .panel, .confirm .panel {
+      background: var(--cream); border-radius: 28px; padding: 22px;
+      display: flex; gap: 16px; flex-wrap: wrap; justify-content: center;
+      max-width: 560px;
+    }
+    .choice {
+      width: 108px; height: 108px; border-radius: 24px; background: #fff;
+    }
+    .confirm .panel { flex-direction: column; align-items: center; gap: 18px; }
+    .confirm .row { display: flex; gap: 18px; }
+    .yes, .no {
+      width: 96px; height: 96px; border-radius: 24px; font-size: 40px; background: #fff;
+    }
+    .yes { background: #d8f0c8; }
+    .no { background: #f7d4cc; }
+    .back {
+      position: absolute; top: 16px; left: 16px;
+      width: 72px; height: 72px; border-radius: 20px; background: #fff;
+      font-size: 32px;
+    }
+    .play-stub {
+      min-height: 100vh; display: grid; place-items: center;
+      background: var(--cream); text-align: center; padding: 24px;
+    }
+    .play-stub h1 { font-size: 40px; margin: 8px 0; }
+    .state {
+      position: fixed; right: 12px; bottom: 72px; z-index: 40;
+      background: #1c1916; color: #f4ead8; border-radius: 12px;
+      padding: 8px 10px; font-size: 12px; max-width: 240px; line-height: 1.4;
+    }
+    .switcher {
+      position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
+      z-index: 40; display: flex; align-items: center; gap: 8px;
+      background: #1c1916; color: #fff; border-radius: 999px; padding: 6px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+    .switcher button {
+      width: 42px; height: 42px; border-radius: 50%; background: #3a342c; color: #fff; font-size: 20px;
+    }
+    .switcher .label { min-width: 180px; text-align: center; font-size: 14px; }
+
+    /* A Meadow: the world is the page. Games are small places on a hill. */
+    .meadow { min-height: 100vh; background: linear-gradient(#b9e3f7, #e7f6c9 58%, #8fbf73); position: relative; }
+    .meadow .sky-row {
+      display: flex; justify-content: space-between; align-items: flex-end;
+      padding: 22px 22px 0;
+    }
+    .meadow .nests { display: flex; gap: 14px; }
+    .meadow .slot { width: 84px; height: 84px; background: #6ea85a; }
+    .meadow .flags { display: flex; gap: 10px; }
+    .meadow .lane {
+      display: flex; gap: 18px; overflow-x: auto; padding: 28px 22px 120px;
+      scroll-snap-type: x mandatory;
+    }
+    .meadow .cottage {
+      flex: 0 0 140px; scroll-snap-align: start;
+      background: #fffaf2; border-radius: 22px 22px 12px 12px;
+      padding: 12px; text-align: center;
+      box-shadow: 0 10px 0 #6ea85a;
+    }
+    .meadow .cottage .icon { font-size: 54px; line-height: 1.1; }
+    .meadow .sun {
+      position: absolute; right: 28px; top: 120px; width: 72px; height: 72px;
+      background: #ffe08a; border-radius: 50%;
+    }
+
+    /* B Shelf: a room. Slots are portraits. Games are wide cushions in a list. */
+    .shelf { min-height: 100vh; background: #f3d7b5; display: grid; grid-template-rows: auto 1fr; }
+    .shelf header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 16px 18px; background: #e7c39a;
+    }
+    .shelf .portraits { display: flex; gap: 12px; }
+    .shelf .slot { width: 76px; height: 76px; background: #f7e6cf; }
+    .shelf .flags { display: flex; gap: 10px; }
+    .shelf .list { overflow: auto; padding: 16px 16px 110px; display: flex; flex-direction: column; gap: 10px; }
+    .shelf .cushion {
+      display: grid; grid-template-columns: 72px 1fr; gap: 12px; align-items: center;
+      background: var(--card); border-radius: 18px; padding: 10px 14px; text-align: left;
+    }
+    .shelf .icon { font-size: 40px; }
+
+    /* C One door: one game fills the screen. Slots are a dock. */
+    .door { min-height: 100vh; background: #1f3b4d; color: white; display: grid; grid-template-rows: auto 1fr auto; }
+    .door .dock {
+      display: flex; justify-content: space-between; align-items: center; padding: 14px 16px 0;
+    }
+    .door .slots { display: flex; gap: 8px; }
+    .door .slot { width: 58px; height: 58px; background: rgba(255,255,255,.15); }
+    .door .flags { display: flex; gap: 8px; }
+    .door .stage { display: grid; place-items: center; padding: 12px; }
+    .door .portal {
+      width: min(420px, 88vw); aspect-ratio: 1; border-radius: 36px;
+      background: #fff4e4; color: var(--ink);
+      display: grid; place-items: center; font-size: 120px;
+    }
+    .door .pager {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 16px 100px;
+    }
+    .door .pager button {
+      width: 84px; height: 84px; border-radius: 24px; background: #fff; color: var(--ink); font-size: 36px;
+    }
+    .door .stars { justify-content: center; max-width: 280px; }
+    .door .star { width: 22px; height: 22px; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="bubble"></div>
+  <div class="state" id="state"></div>
+  <div class="switcher" id="switcher">
+    <button type="button" id="prev" aria-label="Previous layout">←</button>
+    <div class="label" id="label"></div>
+    <button type="button" id="next" aria-label="Next layout">→</button>
+  </div>
+  <script>
+    const FRIENDS = [
+      { id: "bird", name: { en: "bird", it: "uccello" }, body: "#f2c84b" },
+      { id: "cat", name: { en: "cat", it: "gatto" }, body: "#e8883a" },
+      { id: "dog", name: { en: "dog", it: "cane" }, body: "#8a5a3a" },
+      { id: "rabbit", name: { en: "rabbit", it: "coniglio" }, body: "#c8c2bc" }
+    ];
+    const GAMES = [
+      ["paint", "🎨", 3], ["memory", "🃏", 10], ["animals", "🐦", 1],
+      ["vehicles", "🚗", 0], ["food", "🍎", 2], ["shapes", "🔺", 0],
+      ["clothes", "👕", 4], ["toys", "🧸", 0], ["instruments", "🥁", 6],
+      ["phrase", "💬", 0], ["count", "🔵", 5], ["stickers", "🌼", 0],
+      ["sorting", "📦", 0], ["speed", "⚡", 8], ["next", "↪️", 0],
+      ["math", "➕", 0], ["categories", "🧺", 1], ["path", "🛤️", 0],
+      ["jigsaw", "🧩", 0]
+    ].map(([id, icon, stars]) => ({ id, icon, stars }));
+
+    const VARIANTS = [
+      { key: "A", name: "Meadow" },
+      { key: "B", name: "Shelf" },
+      { key: "C", name: "One door" }
+    ];
+
+    const state = {
+      slots: [null, null, null, null],
+      active: null,
+      lang: "en",
+      picking: null,
+      erasing: null,
+      game: null,
+      door: 0,
+      said: ""
+    };
+
+    const params = new URLSearchParams(location.search);
+    let variant = VARIANTS.some(v => v.key === params.get("variant")) ? params.get("variant") : "A";
+
+    function friendFace(id) {
+      const f = FRIENDS.find(x => x.id === id);
+      const ear = id === "rabbit" ? `<ellipse cx="24" cy="18" rx="6" ry="16" fill="${f.body}"/><ellipse cx="76" cy="18" rx="6" ry="16" fill="${f.body}"/>` : "";
+      const beak = id === "bird" ? `<path d="M70 52 h16 l-8 8 z" fill="#e07a3d"/>` : "";
+      return `<svg viewBox="0 0 100 100">${ear}<circle cx="50" cy="58" r="30" fill="${f.body}"/>${beak}<circle cx="40" cy="52" r="4" fill="#3c342b"/><circle cx="62" cy="52" r="4" fill="#3c342b"/></svg>`;
+    }
+
+    function stars(n) {
+      return `<div class="stars">${Array.from({ length: 10 }, (_, i) => `<i class="star${i < n ? " on" : ""}"></i>`).join("")}</div>`;
+    }
+
+    function slotButton(i, sizeNote) {
+      const id = state.slots[i];
+      const cls = `slot${id ? " filled" : ""}${state.active === i ? " active" : ""}`;
+      const inner = id ? `<div class="friend">${friendFace(id)}</div>` : "";
+      return `<button class="${cls}" data-slot="${i}" aria-label="Picture slot ${i + 1}">${inner}</button>`;
+    }
+
+    function flags() {
+      return `<div class="flags">
+        <button class="flag${state.lang === "it" ? " on" : ""}" data-lang="it" aria-label="Italiano"><span class="it"><i></i><i></i><i></i></span></button>
+        <button class="flag${state.lang === "en" ? " on" : ""}" data-lang="en" aria-label="English"><span class="uk"></span></button>
+      </div>`;
+    }
+
+    function meadow() {
+      const nests = state.slots.map((_, i) => slotButton(i)).join("");
+      const cottages = GAMES.map(g => `<button class="cottage" data-game="${g.id}"><div class="icon">${g.icon}</div>${stars(g.stars)}</button>`).join("");
+      return `<div class="meadow"><div class="sun"></div><div class="sky-row"><div class="nests">${nests}</div>${flags()}</div><div class="lane">${cottages}</div></div>`;
+    }
+
+    function shelf() {
+      const portraits = state.slots.map((_, i) => slotButton(i)).join("");
+      const rows = GAMES.map(g => `<button class="cushion" data-game="${g.id}"><div class="icon">${g.icon}</div>${stars(g.stars)}</button>`).join("");
+      return `<div class="shelf"><header><div class="portraits">${portraits}</div>${flags()}</header><div class="list">${rows}</div></div>`;
+    }
+
+    function door() {
+      const g = GAMES[state.door];
+      const slots = state.slots.map((_, i) => slotButton(i)).join("");
+      return `<div class="door"><div class="dock"><div class="slots">${slots}</div>${flags()}</div>
+        <div class="stage"><button class="portal" data-game="${g.id}">${g.icon}</button></div>
+        <div class="pager"><button type="button" data-door="-1" aria-label="Previous game">‹</button>${stars(g.stars)}<button type="button" data-door="1" aria-label="Next game">›</button></div></div>`;
+    }
+
+    function overlays() {
+      let html = "";
+      if (state.picking !== null) {
+        const choices = FRIENDS.map(f => `<button class="choice" data-friend="${f.id}">${friendFace(f.id)}</button>`).join("");
+        html += `<div class="sheet"><div class="panel">${choices}</div></div>`;
+      }
+      if (state.erasing !== null) {
+        html += `<div class="confirm"><div class="panel"><div class="row"><button class="yes" data-erase="yes">✓</button><button class="no" data-erase="no">✕</button></div></div></div>`;
+      }
+      return html;
+    }
+
+    function render() {
+      const root = document.getElementById("app");
+      if (state.game) {
+        const g = GAMES.find(x => x.id === state.game);
+        const next = Math.min(g.stars + 1, 10);
+        root.innerHTML = `<div class="play-stub"><button class="back" data-back="1">←</button><div class="icon" style="font-size:96px">${g.icon}</div><h1>${g.id}</h1><p>level ${next}</p></div>`;
+      } else {
+        const body = variant === "A" ? meadow() : variant === "B" ? shelf() : door();
+        root.innerHTML = body + overlays();
+      }
+      const current = VARIANTS.find(v => v.key === variant);
+      document.getElementById("label").textContent = `${current.key} (${current.name})`;
+      const active = state.active === null ? "none" : (state.slots[state.active] || "empty");
+      document.getElementById("state").textContent =
+        `PROTOTYPE\nvariant ${variant}\nlang ${state.lang}\nactive slot ${state.active === null ? "none" : state.active + 1} (${active})\nslots ${state.slots.map(s => s || "·").join(" ")}`;
+      if (state.said) {
+        document.getElementById("bubble").innerHTML = `<div class="bubble">${state.said}</div>`;
+      } else {
+        document.getElementById("bubble").innerHTML = "";
+      }
+    }
+
+    function speak(text) {
+      state.said = text;
+      render();
+      if (window.speechSynthesis) {
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = state.lang === "it" ? "it-IT" : "en-GB";
+        speechSynthesis.cancel();
+        speechSynthesis.speak(u);
+      }
+      clearTimeout(speak._t);
+      speak._t = setTimeout(() => { state.said = ""; render(); }, 1200);
+    }
+
+    function setVariant(next) {
+      variant = next;
+      const url = new URL(location.href);
+      url.searchParams.set("variant", variant);
+      history.replaceState(null, "", url);
+      render();
+    }
+
+    function cycle(step) {
+      const i = VARIANTS.findIndex(v => v.key === variant);
+      setVariant(VARIANTS[(i + step + VARIANTS.length) % VARIANTS.length].key);
+    }
+
+    let hold = null;
+    document.getElementById("app").addEventListener("pointerdown", (e) => {
+      const slot = e.target.closest("[data-slot]");
+      if (!slot) return;
+      const i = Number(slot.dataset.slot);
+      if (!state.slots[i]) return;
+      hold = setTimeout(() => { state.erasing = i; render(); }, 550);
+    });
+    document.getElementById("app").addEventListener("pointerup", () => clearTimeout(hold));
+    document.getElementById("app").addEventListener("pointerleave", () => clearTimeout(hold));
+
+    document.getElementById("app").addEventListener("click", (e) => {
+      const slot = e.target.closest("[data-slot]");
+      const lang = e.target.closest("[data-lang]");
+      const friend = e.target.closest("[data-friend]");
+      const erase = e.target.closest("[data-erase]");
+      const game = e.target.closest("[data-game]");
+      const doorBtn = e.target.closest("[data-door]");
+      const back = e.target.closest("[data-back]");
+      if (slot && state.erasing === null && state.picking === null) {
+        const i = Number(slot.dataset.slot);
+        if (!state.slots[i]) state.picking = i;
+        else state.active = i;
+        render();
+      } else if (lang) {
+        state.lang = lang.dataset.lang;
+        speak(state.lang === "it" ? "Italiano" : "English");
+      } else if (friend) {
+        state.slots[state.picking] = friend.dataset.friend;
+        state.active = state.picking;
+        state.picking = null;
+        const f = FRIENDS.find(x => x.id === friend.dataset.friend);
+        speak(f.name[state.lang]);
+      } else if (erase) {
+        if (erase.dataset.erase === "yes") {
+          const i = state.erasing;
+          state.slots[i] = null;
+          if (state.active === i) state.active = state.slots.findIndex(s => s);
+          if (state.active === -1) state.active = null;
+        }
+        state.erasing = null;
+        render();
+      } else if (doorBtn) {
+        state.door = (state.door + Number(doorBtn.dataset.door) + GAMES.length) % GAMES.length;
+        render();
+      } else if (game) {
+        if (state.active === null || !state.slots[state.active]) return;
+        state.game = game.dataset.game;
+        render();
+      } else if (back) {
+        state.game = null;
+        render();
+      }
+    });
+
+    document.getElementById("prev").onclick = () => cycle(-1);
+    document.getElementById("next").onclick = () => cycle(1);
+    document.addEventListener("keydown", (e) => {
+      if (e.target.closest("input, textarea, [contenteditable]")) return;
+      if (e.key === "ArrowLeft") cycle(-1);
+      if (e.key === "ArrowRight") cycle(1);
+    });
+
+    setVariant(variant);
+  </script>
+</body>
+</html>
